@@ -1,0 +1,818 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>BoostPad</title>
+<meta name="description" content="Launch a coin for any Discord server. Its trading fees buy Server Boosts for that server.">
+<meta property="og:title" content="BoostPad">
+<meta property="og:description" content="Launch a coin for any Discord server. Its fees boost the server.">
+<meta property="og:image" content="og.jpg">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="favicon.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&family=Unbounded:wght@600;800;900&display=swap" rel="stylesheet">
+<script src="config.js"></script>
+<style>
+:root{
+  --rail:#1e1f22;--side:#2b2d31;--main:#313338;--elev:#232428;--embed:#2b2d31;--line:#3f4147;--hover:#35373c;--sel:#404249;
+  --tx:#dbdee1;--mut:#949ba4;--dim:#6d6f78;--hd:#f2f3f5;
+  --bp:#5865f2;--bp2:#4752c4;--pink:#ff73fa;--green:#23a55a;--yel:#f0b232;--red:#f23f43;
+  --f:"Hanken Grotesk",system-ui,sans-serif;--d:"Unbounded",var(--f);--m:"JetBrains Mono",ui-monospace,monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+[hidden]{display:none!important}
+html,body{height:100%;overflow:hidden;overflow-x:clip;background:var(--rail);color:var(--tx);font-family:var(--f);font-size:16px;-webkit-font-smoothing:antialiased}
+button,input{font:inherit;color:inherit}
+button{cursor:pointer;border:0;background:none}
+a{color:#00a8fc;text-decoration:none}
+svg{display:block}
+.ic{width:20px;height:20px;flex:none}
+
+/* ---------- loader ---------- */
+#loader{position:fixed;inset:0;z-index:90;background:var(--main);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:26px;transition:opacity .45s ease}
+#loader.out{opacity:0;pointer-events:none}
+#loader .mk{width:84px;height:84px;animation:ldr 1.1s cubic-bezier(.5,0,.3,1) infinite}
+@keyframes ldr{0%{transform:translateY(0) scale(1)}40%{transform:translateY(-14px) scale(1.06)}60%{transform:translateY(-14px) scale(1.06)}100%{transform:translateY(0) scale(1)}}
+#loader .k{font:700 12px var(--f);letter-spacing:.12em;color:var(--hd);text-transform:uppercase}
+#loader .t{max-width:340px;text-align:center;color:var(--tx);font-size:15px;line-height:1.45;min-height:44px;padding:0 20px}
+#loader .np{position:absolute;bottom:22px;font-size:11px;color:var(--dim)}
+
+/* ---------- app grid ---------- */
+#app{height:100dvh;display:grid;grid-template-columns:72px 248px minmax(0,1fr) 240px;grid-template-rows:36px minmax(0,1fr)}
+#top{grid-column:1/-1;display:flex;align-items:center;gap:12px;padding:0 10px 0 14px;background:var(--rail);font-size:13px;color:var(--mut)}
+#top .brand{display:flex;align-items:center;gap:8px;color:var(--hd);font:800 12px var(--d);letter-spacing:.02em}
+#top .brand svg{width:20px;height:20px}
+#top .mid{flex:1;text-align:center;font-weight:600;color:var(--mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#top .mid b{color:var(--hd)}
+.tb{height:26px;padding:0 10px;border-radius:6px;display:inline-flex;align-items:center;gap:6px;font-weight:700;font-size:12px;color:var(--tx);background:#2b2d31}
+.tb:hover{background:var(--sel)}
+.tb.buy{background:var(--bp);color:#fff}
+.tb.buy:hover{background:var(--bp2)}
+.tb.off{opacity:.55}
+.tb.ca{font-family:var(--m);font-weight:600}
+#burger{display:none}
+
+/* rail */
+#rail{background:var(--rail);display:flex;flex-direction:column;align-items:center;gap:8px;padding:8px 0 12px;overflow-y:auto;scrollbar-width:none}
+#rail::-webkit-scrollbar{display:none}
+.sv{position:relative;width:48px;height:48px;flex:none}
+.sv>button{width:48px;height:48px;border-radius:50%;display:grid;place-items:center;background:var(--main);color:var(--hd);font:800 13px var(--f);letter-spacing:.02em;transition:border-radius .18s,background .18s;overflow:hidden}
+.sv:hover>button,.sv.on>button{border-radius:16px}
+.sv::before{content:"";position:absolute;left:-16px;top:50%;width:8px;height:8px;margin-top:-4px;border-radius:0 4px 4px 0;background:#fff;transform:scale(0);transition:transform .18s,height .18s,margin .18s}
+.sv:hover::before{transform:scale(1);height:20px;margin-top:-10px}
+.sv.on::before{transform:scale(1);height:40px;margin-top:-20px}
+.sv .lv{position:absolute;right:-5px;bottom:-5px;min-width:14px;height:16px;padding:0 3px;border-radius:8px;background:var(--pink);color:#2b0a2a;font:800 9.5px/16px var(--f);text-align:center;border:3px solid var(--rail);box-sizing:content-box;display:flex;align-items:center;gap:1px}.sv .lv svg{width:9px;height:9px}
+.sv .tip{position:absolute;left:62px;top:50%;transform:translateY(-50%) scale(.96);background:#111214;color:var(--hd);font-weight:700;font-size:14px;padding:7px 11px;border-radius:6px;white-space:nowrap;pointer-events:none;opacity:0;transition:opacity .12s,transform .12s;z-index:30;box-shadow:0 8px 16px rgba(0,0,0,.24)}
+.sv:hover .tip{opacity:1;transform:translateY(-50%) scale(1)}
+.sep{width:32px;height:2px;border-radius:1px;background:#35363c;flex:none}
+#hq>button{background:var(--bp)}
+#hq>button svg{width:30px;height:30px}
+#hq.l1>button{animation:hqspin 6s linear infinite;background:conic-gradient(from var(--a,0deg),var(--bp),var(--pink),#8ea1ff,var(--bp))}
+@property --a{syntax:"<angle>";inherits:false;initial-value:0deg}
+@keyframes hqspin{to{--a:360deg}}
+.sv.add>button{color:var(--green);font-size:24px;font-weight:500}
+.sv.add:hover>button{background:var(--green);color:#fff}
+
+/* sidebar */
+#side{background:var(--side);display:flex;flex-direction:column;min-height:0;border-top-left-radius:8px;overflow:hidden}
+#banner{position:relative;height:0;overflow:hidden;transition:height .7s cubic-bezier(.2,.8,.2,1);flex:none}
+#banner.on{height:128px}
+#banner canvas{position:absolute;inset:0;width:100%;height:100%}
+#banner .unl{position:absolute;inset:0;background:linear-gradient(100deg,transparent 30%,rgba(255,255,255,.55) 50%,transparent 70%);transform:translateX(-120%)}
+#banner.on .unl{animation:sweep 1.1s .25s ease-out}
+@keyframes sweep{to{transform:translateX(120%)}}
+#banner .bt{position:absolute;left:14px;bottom:10px;font:900 18px var(--d);color:#fff;text-shadow:0 2px 10px rgba(0,0,0,.35);letter-spacing:-.01em}
+.sh{height:48px;padding:0 14px;display:flex;align-items:center;gap:8px;border-bottom:1px solid #1f2023;flex:none;color:var(--hd);font-weight:700;font-size:15px}
+.sh .nm{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gemb{display:inline-flex;align-items:center;gap:3px;height:20px;padding:0 6px;border-radius:10px;background:rgba(255,115,250,.14);color:var(--pink);font:800 11px var(--f)}
+.gemb svg{width:12px;height:12px}
+.vanity{display:none;margin:8px 10px 0;padding:6px 10px;border-radius:6px;background:rgba(88,101,242,.16);color:#c9cdfb;font:600 12px var(--m);align-items:center;gap:6px}
+.vanity.on{display:flex;animation:pop .5s cubic-bezier(.2,1.6,.4,1)}
+@keyframes pop{from{transform:scale(.8);opacity:0}}
+.goal{margin:10px 10px 2px;padding:10px 10px 11px;border-radius:8px;background:var(--elev)}
+.goal .r{display:flex;justify-content:space-between;font-size:12px;font-weight:700;color:var(--mut);margin-bottom:7px}
+.goal .r b{color:var(--hd)}
+.gbar{position:relative;height:8px;border-radius:4px;background:#3a3c42;overflow:visible}
+.gbar i{position:absolute;inset:0 auto 0 0;width:0;border-radius:4px;background:linear-gradient(90deg,#9b84ff,var(--pink));transition:width .35s ease}
+.gbar s{position:absolute;top:-3px;width:2px;height:14px;background:#55575e;border-radius:1px}
+.gbar s.hit{background:var(--pink)}
+.chans{flex:1;overflow-y:auto;padding:8px 8px 12px;scrollbar-width:thin;scrollbar-color:#1a1b1e transparent}
+.cat{display:flex;align-items:center;gap:2px;padding:16px 8px 4px 2px;font:700 12px var(--f);letter-spacing:.02em;text-transform:uppercase;color:var(--mut)}
+.cat svg{width:12px;height:12px}
+.ch{width:100%;height:34px;margin:1px 0;padding:0 8px;border-radius:6px;display:flex;align-items:center;gap:6px;color:var(--mut);font-weight:600;font-size:15px;text-align:left}
+.ch svg{width:20px;height:20px;color:#80848e}
+.ch:hover{background:var(--hover);color:var(--tx)}
+.ch.on{background:var(--sel);color:var(--hd)}
+.ch .new{margin-left:auto;height:16px;padding:0 6px;border-radius:8px;background:var(--red);color:#fff;font:800 10px/16px var(--f)}
+.me{height:54px;flex:none;background:var(--elev);display:flex;align-items:center;gap:10px;padding:0 10px}
+.me .av{width:32px;height:32px;border-radius:50%;background:#5c6470;position:relative;flex:none}
+.me .av::after{content:"";position:absolute;right:-2px;bottom:-2px;width:10px;height:10px;border-radius:50%;background:#80848e;border:3px solid var(--elev)}
+.me .n{flex:1;min-width:0;font-size:13px;line-height:1.2}
+.me .n b{display:block;color:var(--hd);font-size:14px}
+.me .n span{color:var(--mut);font-size:12px}
+.np{font-size:10.5px;color:var(--dim);padding:6px 12px 8px;background:var(--elev);line-height:1.3}
+
+/* main */
+#main{background:var(--main);display:flex;flex-direction:column;min-width:0;min-height:0}
+.chh{height:48px;flex:none;display:flex;align-items:center;gap:8px;padding:0 16px;border-bottom:1px solid #26272b;box-shadow:0 1px 0 rgba(4,4,5,.12)}
+.chh .h{display:flex;align-items:center;gap:6px;color:var(--hd);font-weight:700;font-size:16px;white-space:nowrap}
+.chh .h svg{color:#80848e;width:22px;height:22px}
+.mlv{display:none;margin-left:auto;align-items:center;gap:6px;height:26px;padding:0 9px;border-radius:13px;background:rgba(255,115,250,.14);color:var(--pink);font:800 11px var(--f);white-space:nowrap}.mlv svg{width:12px;height:12px}.mlv.bump{animation:pop .5s cubic-bezier(.2,1.6,.4,1)}.mlv i{font-style:normal;color:#c9cdfb;font:600 11px var(--m)}
+.chh .tp{color:var(--mut);font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border-left:1px solid var(--line);padding-left:10px;margin-left:4px}
+#feed{flex:1;overflow-y:auto;padding:14px 0 18px;scroll-behavior:smooth;scrollbar-width:thin;scrollbar-color:#1a1b1e transparent}
+.day{display:flex;align-items:center;gap:10px;margin:6px 16px 10px;color:var(--mut);font:700 12px var(--f)}
+.day::before,.day::after{content:"";flex:1;height:1px;background:var(--line)}
+.msg{display:flex;gap:16px;padding:4px 16px 6px;position:relative}
+.msg:hover{background:#2e3035}
+.msg .av{width:40px;height:40px;border-radius:50%;flex:none;margin-top:2px;display:grid;place-items:center;overflow:hidden}
+.msg .av svg{width:40px;height:40px}
+.msg .b{min-width:0;flex:1}
+.msg .nr{display:flex;align-items:center;gap:6px;flex-wrap:wrap;line-height:1.35}
+.msg .nr b{color:var(--hd);font-weight:700;font-size:16px}
+.app{height:16px;padding:0 5px;border-radius:4px;background:var(--bp);color:#fff;font:700 10px/16px var(--f);display:inline-flex;align-items:center;gap:2px}
+.app svg{width:10px;height:10px}
+.msg time{color:var(--mut);font-size:12px;font-weight:500}
+.msg p{font-size:16px;line-height:1.4;color:var(--tx);margin-top:2px}
+.msg p+p{margin-top:6px}
+.msg p b,.em b{color:var(--hd)}
+code{font-family:var(--m);font-size:13.5px;background:#1e1f22;border-radius:4px;padding:1px 5px;color:#e8e9ec}
+.ment{background:rgba(88,101,242,.3);color:#c9cdfb;border-radius:3px;padding:0 3px;font-weight:600}
+.demo{display:inline-flex;align-items:center;height:18px;padding:0 6px;border-radius:4px;background:rgba(240,178,50,.14);color:var(--yel);font:700 10px/18px var(--m);letter-spacing:.06em}
+.em{margin-top:8px;max-width:560px;background:var(--embed);border-radius:4px;border-left:4px solid var(--bp);padding:12px 16px 14px}
+.em.pk{border-left-color:var(--pink)}
+.em.gr{border-left-color:var(--green)}
+.em h3{font:700 16px var(--f);color:var(--hd);margin-bottom:6px}
+.em .sub{font-size:14px;line-height:1.45;color:var(--tx)}
+.em .sub+.sub{margin-top:6px}
+.em .fl{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px 14px;margin-top:12px}
+.em .f{font-size:14px;line-height:1.35;min-width:0}
+.em .f .k{font-weight:700;color:var(--hd);font-size:13px;margin-bottom:2px}
+.em .f .v{color:var(--tx);overflow-wrap:anywhere}
+.em .ft{margin-top:12px;font-size:12px;color:var(--mut);display:flex;align-items:center;gap:6px;line-height:1.35}
+.btns{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.btn{height:36px;padding:0 16px;border-radius:6px;background:#4e5058;color:#fff;font-weight:600;font-size:14px;display:inline-flex;align-items:center;gap:8px;user-select:none;-webkit-user-select:none;touch-action:none}
+.btn:hover{background:#6d6f78}
+.btn.pri{background:var(--bp)}
+.btn.pri:hover{background:var(--bp2)}
+.btn.pk{background:linear-gradient(90deg,#8d6bff,#e85ce3);color:#fff}
+.btn.pk:hover{filter:brightness(1.08)}
+.btn.pk.hold{filter:brightness(1.2);box-shadow:0 0 0 3px rgba(255,115,250,.3)}
+.btn.gh{background:transparent;box-shadow:inset 0 0 0 1px #4e5058;color:var(--tx)}
+.btn.gh:hover{background:#3a3c41}
+.btn svg{width:16px;height:16px}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.chip{height:32px;padding:0 12px;border-radius:16px;background:#3a3c42;font:600 13px var(--m);color:var(--tx)}
+.chip:hover{background:#4a4c53}
+
+/* simulator */
+.sim{max-width:760px;border-left-color:var(--pink);padding:14px 16px 16px}
+.sim .hd{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+.sim .hd h3{margin:0}
+.sim .stats{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px}
+.st{background:#232428;border-radius:6px;padding:9px 10px}
+.st .k{font-size:11px;font-weight:700;color:var(--mut);text-transform:uppercase;letter-spacing:.04em}
+.st .v{font:700 17px var(--m);color:var(--hd);margin-top:3px;white-space:nowrap}
+.st .v.pk{color:var(--pink)}
+.gems{display:grid;grid-template-columns:repeat(14,minmax(0,1fr));gap:6px;margin:16px 0 6px}
+.gm{aspect-ratio:1;border-radius:10px;background:#1f2023;display:grid;place-items:center;position:relative;transition:transform .2s}
+.gm::before{content:"";position:absolute;inset:0;border-radius:10px;background:conic-gradient(var(--pink) calc(var(--d,0)*1%),transparent 0);-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;padding:2px;opacity:.9}
+.gm svg{width:56%;height:56%;color:#3a3c42;transition:color .2s}
+.gm.on{background:radial-gradient(circle at 50% 35%,rgba(255,115,250,.38),rgba(141,107,255,.16) 70%);animation:gin .45s cubic-bezier(.2,1.6,.4,1)}
+.gm.on svg{color:#fff;filter:drop-shadow(0 0 6px rgba(255,115,250,.8))}
+.gm.mk{box-shadow:inset 0 0 0 1px #55575e}
+@keyframes gin{from{transform:scale(.5)}}
+.lvls{display:grid;grid-template-columns:repeat(14,minmax(0,1fr));gap:6px;font:700 10px var(--m);color:var(--dim);text-align:center}
+.lvls span.hit{color:var(--pink)}
+.sim .ctl{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px;align-items:center}
+.sim .burn{margin-left:auto;font:600 12px var(--m);color:var(--mut)}
+.sim .burn b{color:#ffb3fb}
+.sim .cap{margin-top:12px;font-size:12px;color:var(--mut);line-height:1.45}
+
+/* tables */
+.tbl{width:100%;border-collapse:collapse;margin-top:10px;font-size:13.5px}
+.tbl th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--mut);padding:6px 8px;border-bottom:1px solid var(--line)}
+.tbl td{padding:8px;border-bottom:1px solid #35373c;vertical-align:top;line-height:1.35}
+.tbl td.n{font-family:var(--m);color:var(--hd);white-space:nowrap}
+.tbl tr.lv3 td{background:rgba(255,115,250,.06)}
+.yes{color:var(--green);font-weight:800}
+.no{color:var(--red);font-weight:800}
+.twrap{overflow-x:auto}
+
+/* board */
+.brd{display:flex;flex-direction:column;gap:8px;margin-top:10px;max-width:760px}
+.bi{display:grid;grid-template-columns:40px minmax(0,1fr) auto;gap:12px;align-items:center;background:var(--embed);border-radius:8px;padding:10px 12px;text-align:left;width:100%}
+.bi:hover{background:#30323a}
+.bi .ico{width:40px;height:40px;border-radius:14px;display:grid;place-items:center;font:800 14px var(--f);color:#fff}
+.bi .t{min-width:0}
+.bi .t b{display:block;color:var(--hd);font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bi .t span{font-size:12.5px;color:var(--mut)}
+.bi .r{text-align:right;font:600 12px var(--m);color:var(--mut)}
+.bi .r b{display:block;color:var(--pink);font-size:13px}
+.mini{display:flex;gap:2px;margin-top:5px}
+.mini i{width:7px;height:7px;border-radius:2px;background:#3a3c42}
+.mini i.on{background:var(--pink)}
+
+/* launch result */
+.srv{display:flex;align-items:center;gap:12px;margin-bottom:10px}
+.srv img,.srv .ph{width:56px;height:56px;border-radius:18px;flex:none;object-fit:cover;background:var(--bp);display:grid;place-items:center;font:800 18px var(--f);color:#fff}
+.srv b{font-size:17px;color:var(--hd);display:block}
+.srv span{font-size:13px;color:var(--mut)}
+.frm{display:grid;grid-template-columns:1fr 140px;gap:8px;margin-top:12px}
+.frm label{font-size:11px;font-weight:700;color:var(--mut);text-transform:uppercase;letter-spacing:.04em;display:block;margin-bottom:4px}
+.frm input{width:100%;height:38px;border-radius:6px;background:#1e1f22;border:0;padding:0 10px;color:var(--hd);font-size:14px;outline:none}
+.frm input:focus{box-shadow:0 0 0 2px var(--bp)}
+
+/* composer */
+.cmp{flex:none;padding:0 16px 20px}
+.cmpb{display:flex;align-items:center;gap:10px;height:48px;border-radius:8px;background:#383a40;padding:0 6px 0 14px}
+.cmpb svg{color:#b5bac1}
+.cmpb input{flex:1;min-width:0;background:none;border:0;outline:none;font-size:15px;color:var(--tx)}
+.cmpb input::placeholder{color:#6d6f78}
+.cmpb .go{height:36px;padding:0 12px;border-radius:6px;background:var(--bp);color:#fff;font-weight:700;font-size:13px}
+.slash{display:none;margin-bottom:6px;background:#2b2d31;border-radius:8px;padding:6px;box-shadow:0 8px 24px rgba(0,0,0,.3)}
+.slash.on{display:block}
+.slash button{width:100%;display:flex;align-items:center;gap:10px;text-align:left;padding:8px 10px;border-radius:6px;font-size:14px}
+.slash button:hover,.slash button.sel{background:var(--sel)}
+.slash button code{background:none;padding:0;color:var(--hd);font-weight:600}
+.slash button span{color:var(--mut);font-size:13px}
+
+/* members */
+#mem{background:var(--side);overflow-y:auto;padding:14px 8px;scrollbar-width:none}
+#mem::-webkit-scrollbar{display:none}
+.mh{padding:14px 8px 6px;font:700 12px var(--f);letter-spacing:.02em;text-transform:uppercase;color:var(--mut)}
+.mh:first-child{padding-top:4px}
+.mm{display:flex;align-items:center;gap:10px;height:42px;padding:0 8px;border-radius:6px;font-size:15px;font-weight:600;color:var(--mut)}
+.mm:hover{background:var(--hover);color:var(--tx)}
+.mm .av{width:32px;height:32px;border-radius:50%;position:relative;flex:none;display:grid;place-items:center;font:800 12px var(--f);color:#fff}
+.mm .av svg{width:32px;height:32px}
+.mm .av::after{content:"";position:absolute;right:-2px;bottom:-2px;width:10px;height:10px;border-radius:50%;background:var(--green);border:3px solid var(--side)}
+.mm.off{opacity:.4}
+.mm.off .av::after{background:#80848e}
+.mm .bs{margin-left:auto;color:var(--pink)}
+.mm .bs svg{width:14px;height:14px}
+.mm .nm{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* modal */
+#lvup{position:fixed;inset:0;z-index:70;display:grid;place-items:center;background:rgba(0,0,0,.6);padding:20px}
+#lvup .card{position:relative;width:min(440px,100%);background:var(--main);border-radius:12px;overflow:hidden;text-align:center;animation:pop .5s cubic-bezier(.2,1.5,.4,1);box-shadow:0 24px 60px rgba(0,0,0,.5)}
+#lvup .top{height:140px;background:radial-gradient(circle at 50% 120%,var(--pink),#7a5cff 45%,var(--bp) 75%);display:grid;place-items:center;position:relative;overflow:hidden}
+#lvup .top .big{font:900 64px var(--d);color:#fff;letter-spacing:-.04em;text-shadow:0 6px 30px rgba(0,0,0,.25)}
+#lvup .top .big small{display:block;font:800 13px var(--f);letter-spacing:.3em;margin-bottom:-4px}
+#lvup .in{padding:20px 22px 22px}
+#lvup h2{font:800 20px var(--f);color:var(--hd)}
+#lvup p{color:var(--mut);font-size:14px;margin-top:6px;line-height:1.45}
+#lvup ul{list-style:none;text-align:left;margin:16px 0 18px;display:grid;gap:7px;font-size:14px}
+#lvup li{display:flex;gap:10px;align-items:center;background:var(--elev);border-radius:6px;padding:8px 10px}
+#lvup li svg{width:16px;height:16px;color:var(--pink);flex:none}
+#fx{position:fixed;inset:0;pointer-events:none;z-index:80}
+#toast{position:fixed;left:50%;bottom:90px;transform:translate(-50%,20px);opacity:0;background:#111214;color:var(--hd);padding:10px 14px;border-radius:8px;font-size:14px;font-weight:600;z-index:85;transition:.25s;pointer-events:none;max-width:calc(100% - 32px);text-align:center}
+#toast.on{opacity:1;transform:translate(-50%,0)}
+#scrim{display:none}
+
+/* responsive */
+@media (max-width:1240px){#app{grid-template-columns:72px 248px minmax(0,1fr)}#mem{display:none}}
+@media (max-width:820px){
+  #app{grid-template-columns:minmax(0,1fr);grid-template-rows:44px minmax(0,1fr)}
+  #top{padding:0 8px;gap:8px}
+  #top .mid{display:none}
+  #top .brand span{display:none}
+  #top .sp{flex:1}
+  .tb{height:32px}
+  .tb.x,.tb.snd{display:none}
+  #burger{display:grid;place-items:center;width:40px;height:40px;border-radius:8px;color:var(--hd)}
+  #burger svg{width:22px;height:22px}
+  #rail,#side{position:fixed;top:44px;bottom:0;z-index:50;transform:translateX(-110%);transition:transform .25s cubic-bezier(.2,.8,.2,1)}
+  #rail{left:0;width:72px;transform:translateX(-100%)}
+  #side{left:72px;width:min(280px,calc(100vw - 72px));border-radius:0;transform:translateX(calc(-100% - 80px))}
+  .mlv{display:inline-flex!important}
+  .tb{height:40px}
+  .chip{height:44px}
+  body.dr #rail,body.dr #side{transform:none}
+  body.dr #scrim{display:block;position:fixed;inset:44px 0 0 0;background:rgba(0,0,0,.5);z-index:45}
+  .chh .tp{display:none}
+  .msg{gap:12px;padding:4px 12px 6px}
+  .msg .av,.msg .av svg{width:36px;height:36px}
+  .em{padding:10px 12px 12px}
+  .em .fl{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .sim .stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .sim .stats .st:last-child{grid-column:1/-1}
+  .gems,.lvls{grid-template-columns:repeat(7,minmax(0,1fr))}
+  .lvls{display:none}
+  .sim .burn{margin-left:0;width:100%}
+  .btn{height:44px}
+  .ch{height:44px}
+  .cmp{padding:0 10px calc(12px + env(safe-area-inset-bottom))}
+  .frm{grid-template-columns:1fr}
+  .chip{height:40px}
+}
+@media (prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important}}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <linearGradient id="gpk" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#8d6bff"/><stop offset="1" stop-color="#ff73fa"/></linearGradient>
+  </defs>
+  <symbol id="mk" viewBox="0 0 48 48"><rect width="48" height="48" rx="14" fill="#5865f2"/><path d="M14 23.5 24 14l10 9.5M14 34 24 24.5 34 34" fill="none" stroke="#fff" stroke-width="5.2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="mkw" viewBox="0 0 48 48"><path d="M13 23.5 24 13l11 10.5M13 35 24 24.5 35 35" fill="none" stroke="currentColor" stroke-width="5.6" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="bst" viewBox="0 0 24 24"><path d="M6 12.5 12 7l6 5.5M6 18.5 12 13l6 5.5" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="hash" viewBox="0 0 24 24"><path d="M10 3 8 21M16 3l-2 18M4.5 8.5h16M3.5 15.5h16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+  <symbol id="spk" viewBox="0 0 24 24"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z" fill="currentColor"/><path d="M15.5 8.5a5 5 0 0 1 0 7M18 6a8.5 8.5 0 0 1 0 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+  <symbol id="mute" viewBox="0 0 24 24"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z" fill="currentColor"/><path d="m16 9.5 5 5m0-5-5 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+  <symbol id="dn" viewBox="0 0 24 24"><path d="m7 10 5 5 5-5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></symbol>
+  <symbol id="chk" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="xl" viewBox="0 0 24 24"><path d="M17.8 3h3.1l-6.8 7.8L22 21h-6.2l-4.9-6.4L5.3 21H2.2l7.3-8.3L2 3h6.4l4.4 5.8zm-1.1 16.2h1.7L7.4 4.7H5.6z" fill="currentColor"/></symbol>
+  <symbol id="menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></symbol>
+  <symbol id="cpy" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+  <symbol id="flame" viewBox="0 0 24 24"><path d="M12 2.5c1 3.5 5.5 5.5 5.5 11a5.5 5.5 0 0 1-11 0c0-2.6 1.3-4 2.4-5.2.3 1.6 1 2.6 2 3 0-3.6.4-6 1.1-8.8z" fill="currentColor"/></symbol>
+</svg>
+
+<div id="loader" aria-hidden="true">
+  <svg class="mk"><use href="#mk"/></svg>
+  <div>
+    <div class="k" style="text-align:center;margin-bottom:8px">Did you know</div>
+    <div class="t" id="tip">Every $4.99 in fees is one Server Boost for 30 days.</div>
+  </div>
+  <div class="np">Not affiliated with Discord Inc.</div>
+</div>
+
+<div id="app">
+  <header id="top">
+    <button id="burger" aria-label="Channels"><svg><use href="#menu"/></svg></button>
+    <div class="brand"><svg><use href="#mk"/></svg><span>BOOSTPAD</span></div>
+    <div class="mid" id="crumb"><b>BoostPad HQ</b> &nbsp;/&nbsp; # welcome</div>
+    <div class="sp"></div>
+    <button class="tb ca off" id="caBtn" title="Contract address"><svg class="ic" style="width:14px;height:14px"><use href="#cpy"/></svg><span id="caTxt">CA soon</span></button>
+    <a class="tb x off" id="xBtn" aria-label="X" target="_blank" rel="noopener"><svg style="width:14px;height:14px"><use href="#xl"/></svg></a>
+    <button class="tb snd" id="sndBtn" aria-label="Sound"><svg style="width:16px;height:16px"><use href="#mute"/></svg></button>
+    <a class="tb buy off" id="buyBtn" target="_blank" rel="noopener">Buy $BOOST</a>
+  </header>
+
+  <nav id="rail" aria-label="Servers"></nav>
+
+  <aside id="side">
+    <div id="banner"><canvas id="bcv"></canvas><div class="unl"></div></div>
+    <div class="sh"><span class="nm">BoostPad HQ</span><span class="gemb" id="lvlBadge"><svg><use href="#bst"/></svg><span>LVL 0</span></span></div>
+    <div class="vanity" id="vanity"><svg style="width:14px;height:14px"><use href="#chk"/></svg>discord.gg/boostpad</div>
+    <div class="goal">
+      <div class="r"><span>Boost goal</span><span><b id="gNow">0</b>/14 boosts</span></div>
+      <div class="gbar" id="gbar"><i id="gFill"></i><s style="left:calc(2/14*100% - 1px)"></s><s style="left:calc(7/14*100% - 1px)"></s></div>
+    </div>
+    <div class="chans" id="chans"></div>
+    <div class="me"><div class="av"></div><div class="n"><b>you</b><span>wallet not connected</span></div></div>
+    <div class="np">Not affiliated with Discord Inc.</div>
+  </aside>
+
+  <main id="main">
+    <div class="chh"><div class="h"><svg><use href="#hash"/></svg><span id="chName">welcome</span></div><div class="tp" id="chTopic"></div><span class="mlv" id="mlv"><svg><use href="#bst"/></svg><span id="mlvT">HQ · LVL 0 · 0/14</span></span></div>
+    <div id="feed" role="log" aria-live="polite"></div>
+    <div class="cmp">
+      <div class="slash" id="slash"></div>
+      <form class="cmpb" id="cmp" autocomplete="off">
+        <svg class="ic"><use href="#plus"/></svg>
+        <input id="cmpIn" placeholder="Try /launch discord.gg/yourserver" aria-label="Command">
+        <button class="go" type="submit">Send</button>
+      </form>
+    </div>
+  </main>
+
+  <aside id="mem" aria-label="Members"></aside>
+</div>
+<div id="scrim"></div>
+
+<div id="lvup" hidden>
+  <div class="card">
+    <div class="top"><div class="big"><small>SERVER LEVEL</small>3</div></div>
+    <div class="in">
+      <h2>BoostPad HQ hit Level 3</h2>
+      <p>14 boosts, all paid by its coin's trading fees. Nobody in the server spent a cent.</p>
+      <ul>
+        <li><svg><use href="#chk"/></svg>Vanity link: discord.gg/boostpad</li>
+        <li><svg><use href="#chk"/></svg>Animated server banner</li>
+        <li><svg><use href="#chk"/></svg>250 emoji slots, 100 MB uploads, 384 kbps audio</li>
+      </ul>
+      <button class="btn pri" id="lvClose" style="width:100%;justify-content:center">Nice</button>
+    </div>
+  </div>
+</div>
+<canvas id="fx"></canvas>
+<div id="toast"></div>
+
+<script>
+(function(){
+"use strict";
+var CFG = window.BOOSTPAD_CFG || {};
+var $ = function(s,r){return (r||document).querySelector(s)};
+var esc = function(s){return String(s==null?"":s).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]})};
+var PRICE = 4.99, FEE = 0.005, SERVER_CUT = 0.85, MAXB = 14;
+var money = function(n,d){d=d==null?2:d;return "$"+Number(n).toLocaleString("en-US",{minimumFractionDigits:d,maximumFractionDigits:d})};
+var kfmt = function(n){if(n>=1e6)return (n/1e6).toFixed(1)+"M";if(n>=1e3)return (n/1e3).toFixed(n>=1e4?0:1)+"K";return String(Math.round(n))};
+var levelOf = function(b){return b>=14?3:b>=7?2:b>=2?1:0};
+var now = new Date();
+var hhmm = function(off){var d=new Date(now.getTime()-(off||0)*60000);return d.toLocaleTimeString([], {hour:"numeric",minute:"2-digit"})};
+
+/* ---------- config wiring ---------- */
+var caBtn=$("#caBtn"), buyBtn=$("#buyBtn"), xBtn=$("#xBtn");
+if(CFG.CA){caBtn.classList.remove("off");$("#caTxt").textContent=CFG.CA.slice(0,4)+"…"+CFG.CA.slice(-4);}
+var buyUrl = CFG.BUY || (CFG.CA ? "https://pump.fun/coin/"+CFG.CA : "");
+var chartUrl = CFG.CHART || (CFG.CA ? "https://gmgn.ai/sol/token/"+CFG.CA : "");
+if(buyUrl){buyBtn.href=buyUrl;buyBtn.classList.remove("off")}else{buyBtn.removeAttribute("href");buyBtn.addEventListener("click",function(e){e.preventDefault();toast("$BOOST launches soon. Buy opens with the CA.")})}
+if(CFG.X){xBtn.href=CFG.X;xBtn.classList.remove("off")}else{xBtn.removeAttribute("href");xBtn.addEventListener("click",function(e){e.preventDefault();toast("X link posts at launch.")})}
+caBtn.addEventListener("click",function(){if(!CFG.CA){toast("CA posts at launch.");return}copy(CFG.CA,"CA copied")});
+function copy(t,msg){try{navigator.clipboard.writeText(t).then(function(){toast(msg||"Copied")},function(){toast(t)})}catch(e){toast(t)}}
+var tt;function toast(t){var el=$("#toast");el.textContent=t;el.classList.add("on");clearTimeout(tt);tt=setTimeout(function(){el.classList.remove("on")},2200)}
+
+/* ---------- loader ---------- */
+var tips=["Every $4.99 in fees is one Server Boost for 30 days.","14 boosts is Level 3. About $16K of volume a month keeps a server there.","The server owner never has to set anything up.","One coin per server. The first launch owns it, forever."];
+$("#tip").textContent=tips[Math.floor(Math.random()*tips.length)];
+setTimeout(function(){$("#loader").classList.add("out")},1500);
+setTimeout(function(){$("#loader").hidden=true},2000);
+
+/* ---------- demo servers ---------- */
+var SERVERS=[
+ {n:"Pixel Pantry",i:"PP",c:"#e8710a",m:18420,b:14,t:"PANTRY",v:96.4},
+ {n:"Night Owls FM",i:"NO",c:"#3b5bdb",m:9310,b:9,t:"OWLS",v:41.2},
+ {n:"Grindhouse SMP",i:"GS",c:"#2f9e44",m:27105,b:7,t:"GRIND",v:12.9},
+ {n:"Moth Club",i:"MC",c:"#9c36b5",m:3120,b:4,t:"MOTH",v:7.3},
+ {n:"Lofi Garage",i:"LG",c:"#c2255c",m:5640,b:2,t:"GARAGE",v:3.8},
+ {n:"Duck Pond",i:"DP",c:"#1098ad",m:1290,b:0,t:"QUACK",v:2.1}
+];
+
+/* ---------- rail ---------- */
+function renderRail(){
+  var h='<div class="sv on" id="hq"><button aria-label="BoostPad HQ"><svg><use href="#mkw"/></svg></button><span class="tip">BoostPad HQ</span></div><div class="sep"></div>';
+  SERVERS.forEach(function(s,ix){
+    var l=levelOf(s.b);
+    h+='<div class="sv" data-s="'+ix+'"><button style="background:'+s.c+'" aria-label="'+esc(s.n)+'">'+s.i+'</button>'+(l?'<span class="lv"><svg><use href="#bst"/></svg>'+l+'</span>':'')+'<span class="tip">'+esc(s.n)+' · $'+s.t+'</span></div>';
+  });
+  h+='<div class="sv add"><button aria-label="Launch for a server">+</button><span class="tip">Launch a coin for a server</span></div>';
+  $("#rail").innerHTML=h;
+}
+renderRail();
+$("#rail").addEventListener("click",function(e){
+  var sv=e.target.closest(".sv");if(!sv)return;
+  if(sv.id==="hq"){go("welcome");return}
+  if(sv.classList.contains("add")){go("launch");return}
+  go("board",+sv.dataset.s);
+});
+
+/* ---------- channels ---------- */
+var CH={
+ welcome:{t:"Launch a coin for any Discord server. Its fees boost the server."},
+ "how-it-works":{t:"Five steps. The owner does none of them."},
+ levels:{t:"What the boosts unlock, and the volume that pays for them."},
+ rules:{t:"What's true, what isn't."},
+ launch:{t:"Paste an invite. /launch discord.gg/yourserver"},
+ board:{t:"Servers with a coin, ranked by boosts."},
+ "boost-log":{t:"Every boost BoostPad applies, posted here."},
+ "boost-token":{t:"15% of every server's fees buy back and burn $BOOST."}
+};
+var CATS=[["Start here",["welcome","how-it-works","levels","rules"]],["Pad",["launch","board","boost-log"]],["Token",["boost-token"]]];
+var cur="welcome", logUnread=0;
+function renderChans(){
+  var h="";
+  CATS.forEach(function(c){
+    h+='<div class="cat"><svg><use href="#dn"/></svg>'+c[0]+'</div>';
+    c[1].forEach(function(k){
+      h+='<button class="ch'+(k===cur?" on":"")+'" data-c="'+k+'"><svg><use href="#hash"/></svg>'+k+(k==="boost-log"&&logUnread&&cur!=="boost-log"?'<span class="new">'+logUnread+'</span>':'')+'</button>';
+    });
+  });
+  $("#chans").innerHTML=h;
+}
+$("#chans").addEventListener("click",function(e){var b=e.target.closest(".ch");if(b)go(b.dataset.c)});
+
+/* ---------- messages helpers ---------- */
+var BOTAV='<div class="av"><svg><use href="#mk"/></svg></div>';
+function bot(body,off){return '<div class="msg">'+BOTAV+'<div class="b"><div class="nr"><b>BoostPad</b><span class="app"><svg><use href="#chk"/></svg>APP</span><time>Today at '+hhmm(off)+'</time></div>'+body+'</div></div>'}
+function user(name,color,body,off){return '<div class="msg"><div class="av" style="background:'+color+';color:#fff;font:800 14px var(--f)">'+esc(name.slice(0,1).toUpperCase())+'</div><div class="b"><div class="nr"><b style="color:'+color+'">'+esc(name)+'</b><time>Today at '+hhmm(off)+'</time></div><p>'+body+'</p></div></div>'}
+var DEMO='<span class="demo">DEMONSTRATION</span>';
+
+/* ---------- channel views ---------- */
+var V={};
+V.welcome=function(){
+  return '<div class="day">Today</div>'+
+  bot('<p>Welcome to <b>BoostPad</b>.</p><div class="em"><h3>Launch a coin for any Discord server.</h3><div class="sub">Its trading fees buy <b>Server Boosts</b> for that server. Every <b>$4.99</b> in fees is one boost for 30 days. <b>14 boosts is Level 3.</b></div><div class="sub">The owner doesn\'t sign up, connect a wallet or claim anything. The boosts just show up.</div><div class="btns"><button class="btn pri" data-go="launch">Launch for a server</button><button class="btn gh" data-go="how-it-works">How it works</button></div></div>',9)+
+  bot('<p>Watch this server pay for itself. The banner, the vanity link and the level badge on the left are real UI on this page, and they unlock as the coin trades.</p>'+simHTML(),8);
+};
+V["how-it-works"]=function(){
+  var steps=[
+   ["1 · Paste an invite","Any public server. <code>discord.gg/yourserver</code>. BoostPad reads its name, icon, members and current boosts straight from Discord."],
+   ["2 · Launch the coin","It launches on pump.fun with the server's name and icon. The creator fee goes to that server's vault, set in the launch transaction. The launcher never touches it."],
+   ["3 · Fees fill the vault","85% of every creator-fee claim goes to the server vault. 15% buys back and burns $BOOST."],
+   ["4 · $4.99 = one boost","Each time the vault holds $4.99, a BoostPad booster account boosts that server for 30 days. It shows up in the server's own boost list. Up to 14, which is Level 3."],
+   ["5 · Renew or drop","Boosts are monthly. If the coin keeps trading, they renew. If it dies, they fall off one by one and the server loses its level. Once 14 are running and next month is already paid, extra fees buy back and burn the server's coin."]
+  ];
+  var h='<div class="day">Today</div>';
+  steps.forEach(function(s,i){h+=bot('<div class="em'+(i===3?" pk":"")+'"><h3>'+s[0]+'</h3><div class="sub">'+s[1]+'</div></div>',8-i)});
+  h+=user("owner_of_some_server","#e67700","wait so I don't have to do anything?",3);
+  h+=bot('<p>Correct. You can turn it off: log in with Discord as the server owner and opt out. Then the vault buys back and burns your server\'s coin instead. The fees are never sent anywhere else.</p>',2);
+  return h;
+};
+V.levels=function(){
+  var rows=[[0,0,"Base server","50 emoji, 96 kbps, 10 MB uploads"],[1,2,"Level 1","Animated icon, invite background, 100 emoji, 128 kbps"],[2,7,"Level 2","Server banner, 150 emoji, 256 kbps, 50 MB uploads"],[3,14,"Level 3","Vanity link, animated banner, 250 emoji, 384 kbps, 100 MB uploads"]];
+  var h='<table class="tbl"><thead><tr><th>Level</th><th>Boosts</th><th>Per month</th><th>Volume / month*</th><th>Unlocks</th></tr></thead><tbody>';
+  rows.forEach(function(r){var cost=r[1]*PRICE;var vol=cost/SERVER_CUT/FEE;h+='<tr'+(r[0]===3?' class="lv3"':'')+'><td><b>'+r[2]+'</b></td><td class="n">'+r[1]+'</td><td class="n">'+money(cost)+'</td><td class="n">'+(r[1]?"≈ $"+kfmt(vol):"—")+'</td><td>'+r[3]+'</td></tr>'});
+  h+='</tbody></table>';
+  return '<div class="day">Today</div>'+bot('<p>A boost costs <b>$4.99 a month</b>. Here is what each level costs and how much trading pays for it.</p><div class="em pk" style="max-width:760px"><h3>Levels</h3><div class="twrap">'+h+'</div><div class="ft">* At a 0.5% creator fee, with 85% going to the server vault. Higher fee, less volume needed.</div></div>',5)+
+  bot('<p>The short version: <b>about $16K of volume a month keeps a server at Level 3.</b> A coin that does that in one afternoon pays the server\'s boosts for the whole month.</p>',4);
+};
+V.rules=function(){
+  var r=[["Anyone can launch a coin for any public server, without asking.",1],["The server owner gets SOL or cash.",0],["The server gets Server Boosts, bought with its coin's fees.",1],["Fees can be sent somewhere else later.",0],["One coin per server. The first launch owns it.",1],["The owner can opt out. Then the fees buy back and burn that server's coin.",1],["Holding a server's coin pays you.",0],["15% of every server's fees buy back and burn $BOOST.",1],["BoostPad is Discord, or made by Discord.",0]];
+  var h='<table class="tbl"><thead><tr><th>Claim</th><th style="width:70px">True?</th></tr></thead><tbody>';
+  r.forEach(function(x){h+='<tr><td>'+x[0]+'</td><td>'+(x[1]?'<span class="yes">Yes</span>':'<span class="no">No</span>')+'</td></tr>'});
+  h+='</tbody></table>';
+  return '<div class="day">Today</div>'+bot('<div class="em" style="max-width:640px"><h3>House rules</h3><div class="twrap">'+h+'</div><div class="ft">BoostPad is not affiliated with, endorsed by or made by Discord Inc. Boosts are bought at Discord\'s normal price from BoostPad\'s own booster accounts.</div></div>',6);
+};
+V.launch=function(){
+  return '<div class="day">Today</div>'+bot('<p>Paste any invite below, like <code>/launch discord.gg/yourserver</code>. I\'ll look the server up on Discord and set up its coin.</p><div class="chips"><button class="chip" data-cmd="/launch discord.gg/midjourney">discord.gg/midjourney</button><button class="chip" data-cmd="/launch discord.gg/minecraft">discord.gg/minecraft</button><button class="chip" data-cmd="/launch discord.gg/fortnite">discord.gg/fortnite</button></div>',2)+'<div id="launchOut"></div>';
+};
+V.board=function(sel){
+  var h='<div class="brd">';
+  SERVERS.slice().sort(function(a,b){return b.b-a.b}).forEach(function(s){
+    var ix=SERVERS.indexOf(s),mini="";
+    for(var i=0;i<14;i++)mini+='<i'+(i<s.b?' class="on"':'')+'></i>';
+    h+='<button class="bi" data-s="'+ix+'"'+(sel===ix?' style="box-shadow:inset 0 0 0 2px var(--pink)"':'')+'><div class="ico" style="background:'+s.c+'">'+s.i+'</div><div class="t"><b>'+esc(s.n)+' · $'+s.t+'</b><span>'+s.m.toLocaleString()+' members · Level '+levelOf(s.b)+'</span><div class="mini">'+mini+'</div></div><div class="r"><b>'+s.b+'/14</b>'+money(s.v)+' in vault</div></button>';
+  });
+  h+='</div>';
+  var out='<div class="day">Today</div>'+bot('<p>Servers with a coin, ranked by active boosts. '+DEMO+'</p><p style="color:var(--mut);font-size:14px">Sample servers. The live board fills from real launches.</p>'+h,3);
+  if(sel!=null){var s=SERVERS[sel];out+=bot(serverCard(s),1)}
+  return out;
+};
+function serverCard(s){
+  var need=Math.max(0,14-s.b),l=levelOf(s.b);
+  return '<div class="em pk"><div class="srv"><div class="ph" style="background:'+s.c+'">'+s.i+'</div><div><b>'+esc(s.n)+'</b><span>$'+s.t+' · '+s.m.toLocaleString()+' members</span></div></div><div class="fl"><div class="f"><div class="k">Boosts</div><div class="v">'+s.b+'/14 · Level '+l+'</div></div><div class="f"><div class="k">Vault</div><div class="v">'+money(s.v)+'</div></div><div class="f"><div class="k">To Level 3</div><div class="v">'+(need?need+" more boosts":"Reached")+'</div></div></div><div class="ft">'+DEMO+' Sample server.</div></div>';
+}
+V["boost-log"]=function(){
+  var h='<div class="day">Today</div>'+bot('<p>Every boost BoostPad applies gets posted here with its server and renewal date. '+DEMO+'</p>',30);
+  logLines.slice(-14).forEach(function(l){h+=logMsg(l)});
+  return h;
+};
+V["boost-token"]=function(){
+  var ca=CFG.CA?'<code>'+esc(CFG.CA)+'</code>':'<span style="color:var(--mut)">Posts at launch</span>';
+  return '<div class="day">Today</div>'+bot('<div class="em"><h3>$BOOST</h3><div class="sub">BoostPad\'s own coin. <b>15% of every server\'s creator fees buy back and burn $BOOST</b>, from every coin launched on the pad. More servers boosting, more $BOOST burned.</div><div class="fl"><div class="f"><div class="k">Ticker</div><div class="v">$BOOST</div></div><div class="f"><div class="k">Chain</div><div class="v">Solana · pump.fun</div></div><div class="f"><div class="k">Burn share</div><div class="v">15% of pad fees</div></div></div><div class="sub" style="margin-top:12px"><span style="font-size:12px;font-weight:700;color:var(--hd);text-transform:uppercase;letter-spacing:.04em">Contract</span><br>'+ca+'</div><div class="btns"><a class="btn pri" id="tkBuy">Buy $BOOST</a><a class="btn gh" id="tkChart">Chart</a>'+(CFG.CA?'<button class="btn gh" id="tkCopy"><svg><use href="#cpy"/></svg>Copy CA</button>':'')+'</div></div>',2);
+};
+
+/* ---------- router ---------- */
+function go(c,arg){
+  cur=c; if(c==="boost-log")logUnread=0;
+  renderChans();
+  $("#chName").textContent=c;
+  $("#chTopic").textContent=CH[c].t;
+  $("#crumb").innerHTML='<b>BoostPad HQ</b> &nbsp;/&nbsp; # '+c;
+  $("#feed").style.scrollBehavior="auto";
+  $("#feed").innerHTML=V[c](arg);
+  $("#feed").scrollTop=c==="welcome"||c==="how-it-works"||c==="levels"||c==="rules"||c==="board"&&arg==null?0:$("#feed").scrollHeight;
+  $("#feed").style.scrollBehavior="";
+  document.querySelectorAll(".sv").forEach(function(s){s.classList.toggle("on",(s.id==="hq"&&arg==null)||(+s.dataset.s===arg&&c==="board"))});
+  $("#cmpIn").placeholder=c==="launch"?"/launch discord.gg/yourserver":"Message #"+c+" (try /launch)";
+  document.body.classList.remove("dr");
+  if(c==="welcome")bindSim();
+  if(c==="boost-token"){var b=$("#tkBuy"),ch=$("#tkChart");if(buyUrl){b.href=buyUrl;b.target="_blank"}else b.onclick=function(){toast("$BOOST launches soon.")};if(chartUrl){ch.href=chartUrl;ch.target="_blank"}else ch.onclick=function(){toast("Chart opens with the CA.")};var cp=$("#tkCopy");if(cp)cp.onclick=function(){copy(CFG.CA,"CA copied")}}
+}
+$("#feed").addEventListener("click",function(e){
+  var g=e.target.closest("[data-go]");if(g){go(g.dataset.go);return}
+  var c=e.target.closest("[data-cmd]");if(c){run(c.dataset.cmd);return}
+  var b=e.target.closest(".bi");if(b){go("board",+b.dataset.s);return}
+});
+
+/* ---------- simulator ---------- */
+var S={vol:0,fees:0,vault:0,burned:0,bst:[],day:0,peak:0,shown3:false,auto:true};
+function simHTML(){
+  var g="",l="";
+  for(var i=0;i<14;i++){g+='<div class="gm'+(i===1||i===6||i===13?" mk":"")+'" data-i="'+i+'"><svg><use href="#bst"/></svg></div>';l+='<span data-l="'+i+'">'+(i===1?"L1":i===6?"L2":i===13?"L3":"")+'</span>'}
+  return '<div class="em sim" id="sim"><div class="hd"><h3>BoostPad HQ · $HQ</h3>'+DEMO+'</div>'+
+  '<div class="stats"><div class="st"><div class="k">Volume</div><div class="v" id="sVol">$0</div></div><div class="st"><div class="k">Creator fees</div><div class="v" id="sFee">$0.00</div></div><div class="st"><div class="k">Server vault</div><div class="v" id="sVault">$0.00</div></div><div class="st"><div class="k">Boosts</div><div class="v pk" id="sB">0/14</div></div><div class="st"><div class="k">Day</div><div class="v" id="sDay">1 of 30</div></div></div>'+
+  '<div class="gems" id="gems">'+g+'</div><div class="lvls" id="lvls">'+l+'</div>'+
+  '<div class="ctl"><button class="btn pk" id="hold" type="button"><svg><use href="#bst"/></svg>Hold to trade</button><button class="btn gh" id="skip" type="button">Skip 30 days, no trades</button><button class="btn gh" id="rst" type="button">Reset</button><span class="burn" id="sBurn">Server coin burned: <b>$0.00</b></span></div>'+
+  '<div class="cap">Assumes a 0.5% creator fee. 85% fills the server vault, 15% buys back $BOOST. Each boost lasts 30 days. Once 14 are running and next month is banked, the rest burns the server\'s coin.</div></div>';
+}
+var holding=false;
+function bindSim(){
+  var h=$("#hold");if(!h)return;
+  var on=function(e){e.preventDefault();holding=true;S.auto=false;h.classList.add("hold");audioInit()};
+  var off=function(){holding=false;h.classList.remove("hold")};
+  h.addEventListener("pointerdown",on);h.addEventListener("pointerup",off);h.addEventListener("pointerleave",off);h.addEventListener("pointercancel",off);
+  h.addEventListener("keydown",function(e){if(e.key===" "||e.key==="Enter"){on(e)}});h.addEventListener("keyup",off);
+  $("#skip").addEventListener("click",function(){S.auto=false;skip30()});
+  $("#rst").addEventListener("click",function(){S={vol:0,fees:0,vault:0,burned:0,bst:[],day:0,peak:0,shown3:false,auto:false};paint()});
+  paint();
+}
+function trade(v){
+  S.vol+=v;var f=v*FEE;S.fees+=f;S.vault+=f*SERVER_CUT;
+  var bought=false;
+  while(S.vault>=PRICE&&S.bst.length<MAXB){S.vault-=PRICE;S.bst.push(30-S.day);bought=true;logBoost("HQ")}
+  if(S.bst.length>=MAXB&&S.vault>MAXB*PRICE){var x=S.vault-MAXB*PRICE;S.burned+=x;S.vault-=x}
+  if(bought)paint();
+}
+function skip30(){
+  S.day=0;
+  var keep=[];
+  S.bst.forEach(function(){if(S.vault>=PRICE){S.vault-=PRICE;keep.push(30)}});
+  var lost=S.bst.length-keep.length;S.bst=keep;
+  if(lost)toast(lost+" boost"+(lost>1?"s":"")+" expired. No fees, no renewal.");else if(keep.length)toast("All "+keep.length+" boosts renewed from the vault.");
+  S.shown3=S.bst.length>=14&&S.shown3;
+  paint();
+}
+var lastLvl=0;
+function paint(){
+  var n=S.bst.length,l=levelOf(n);
+  var set=function(id,t){var e=$(id);if(e)e.textContent=t};
+  set("#sVol","$"+kfmt(S.vol));set("#sFee",money(S.fees));set("#sVault",money(S.vault));set("#sB",n+"/14");set("#sDay",(Math.floor(S.day)+1)+" of 30");
+  set("#sBurn","");var sb=$("#sBurn");if(sb)sb.innerHTML='Server coin burned: <b>'+money(S.burned)+'</b>';
+  document.querySelectorAll(".gm").forEach(function(g,i){var on=i<n;if(on!==g.classList.contains("on"))g.classList.toggle("on",on);g.style.setProperty("--d",on?Math.max(0,Math.min(100,S.bst[i]/30*100)):0)});
+  document.querySelectorAll("#lvls span").forEach(function(s,i){s.classList.toggle("hit",i<n)});
+  // client-wide effects
+  $("#gNow").textContent=n;$("#gFill").style.width=(n/14*100)+"%";
+  document.querySelectorAll("#gbar s").forEach(function(s,i){s.classList.toggle("hit",n>=(i?7:2))});
+  $("#lvlBadge span").textContent="LVL "+l;
+  renderMem(n);
+  var mt=$("#mlvT");if(mt){var txt="HQ · LVL "+l+" · "+n+"/14";if(mt.textContent!==txt){mt.textContent=txt;if(l>lastLvl){var mp=$("#mlv");mp.classList.remove("bump");void mp.offsetWidth;mp.classList.add("bump")}}}
+  var hq=$("#hq");if(hq)hq.classList.toggle("l1",l>=1);
+  $("#banner").classList.toggle("on",l>=2);
+  $("#vanity").classList.toggle("on",l>=3);
+  if(l>lastLvl){chime(l);if(l===3&&!S.shown3){S.shown3=true;setTimeout(levelUp,350)}}
+  lastLvl=l;
+}
+function levelUp(){$("#lvup").hidden=false;confetti();$("#lvClose").focus()}
+$("#lvClose").addEventListener("click",function(){$("#lvup").hidden=true});
+$("#lvup").addEventListener("click",function(e){if(e.target.id==="lvup")$("#lvup").hidden=true});
+document.addEventListener("keydown",function(e){if(e.key==="Escape"){$("#lvup").hidden=true;document.body.classList.remove("dr");$("#slash").classList.remove("on")}});
+
+var lastT=performance.now(),autoStart=performance.now()+2100;
+function loop(t){
+  var dt=Math.min(.1,(t-lastT)/1000);lastT=t;
+  if(holding){trade(2600*dt*10*0.38);S.day=Math.min(29.9,S.day+dt*1.2);paintLite()}
+  else if(S.auto&&t>autoStart&&S.bst.length<7){trade(1150*dt*10*0.42);S.day=Math.min(29.9,S.day+dt*.8);paintLite()}
+  drawBanner(t);
+  requestAnimationFrame(loop);
+}
+var pl=0;function paintLite(){var t=performance.now();if(t-pl<90)return;pl=t;var e;if((e=$("#sVol")))e.textContent="$"+kfmt(S.vol);if((e=$("#sFee")))e.textContent=money(S.fees);if((e=$("#sVault")))e.textContent=money(S.vault);if((e=$("#sDay")))e.textContent=(Math.floor(S.day)+1)+" of 30"}
+requestAnimationFrame(loop);
+
+/* ---------- banner art (unlocks at level 2) ---------- */
+var bcv=$("#bcv"),bx=bcv.getContext("2d");
+function drawBanner(t){
+  if(!$("#banner").classList.contains("on"))return;
+  var w=bcv.clientWidth,h=bcv.clientHeight,dpr=Math.min(2,window.devicePixelRatio||1);
+  if(!w||!h)return;
+  var W=Math.round(w*dpr),H=Math.round(h*dpr);if(bcv.width!==W||bcv.height!==H){bcv.width=W;bcv.height=H}
+  bx.setTransform(dpr,0,0,dpr,0,0);
+  var anim=S.bst.length>=14, k=anim?t/1000:0;
+  var g=bx.createLinearGradient(0,0,w,h);g.addColorStop(0,"#3b44c9");g.addColorStop(.55,"#6a4cf0");g.addColorStop(1,"#d24fd1");
+  bx.fillStyle=g;bx.fillRect(0,0,w,h);
+  for(var i=0;i<3;i++){var cx=w*(.2+.3*i)+Math.sin(k*.7+i*2)*28,cy=h*(.4+.25*Math.cos(k*.5+i));var r=bx.createRadialGradient(cx,cy,0,cx,cy,110);r.addColorStop(0,i===1?"rgba(255,115,250,.55)":"rgba(140,160,255,.45)");r.addColorStop(1,"rgba(0,0,0,0)");bx.fillStyle=r;bx.fillRect(0,0,w,h)}
+  bx.lineCap="round";bx.lineJoin="round";
+  var col=0;for(var x=18;x<w+30;x+=36,col++){for(var y=-36;y<h+40;y+=36){var yy=y-((k*26+col*9)%36)+(col%2?18:0);var a=.10+.08*Math.sin(col*1.3+y*.05);bx.strokeStyle="rgba(255,255,255,"+a.toFixed(3)+")";bx.lineWidth=3;bx.beginPath();bx.moveTo(x-7,yy+4);bx.lineTo(x,yy-3);bx.lineTo(x+7,yy+4);bx.stroke()}}
+  bx.save();bx.translate(w-62,h/2-6);bx.rotate(-.08);bx.strokeStyle="rgba(255,255,255,.9)";bx.lineWidth=9;bx.shadowColor="rgba(255,115,250,.9)";bx.shadowBlur=18;bx.beginPath();bx.moveTo(-22,-2);bx.lineTo(0,-24);bx.lineTo(22,-2);bx.moveTo(-22,22);bx.lineTo(0,0);bx.lineTo(22,22);bx.stroke();bx.restore();
+  var sh=bx.createLinearGradient(0,h*.4,0,h);sh.addColorStop(0,"rgba(0,0,0,0)");sh.addColorStop(1,"rgba(0,0,0,.35)");bx.fillStyle=sh;bx.fillRect(0,0,w,h);
+}
+
+/* ---------- boost log ---------- */
+var logLines=[];
+var LOGSRV=["Pixel Pantry","Night Owls FM","Grindhouse SMP","Moth Club","Lofi Garage","Night Owls FM","Pixel Pantry"];
+(function seed(){for(var i=0;i<9;i++){var s=SERVERS[i%5];logLines.push({s:s.n,c:s.c,i:s.i,k:Math.min(14,2+i),off:40-i*4})}})();
+function logMsg(l){return bot('<p><span style="color:var(--pink);font-weight:800">⇈</span> Boosted <b>'+esc(l.s)+'</b> · boost '+l.k+'/14 · renews in 30 days</p>',l.off)}
+function logBoost(src){
+  var l=src==="HQ"?{s:"BoostPad HQ",k:S.bst.length,off:0}:src;
+  logLines.push(l);if(logLines.length>40)logLines.shift();
+  if(cur==="boost-log"){var f=$("#feed");f.insertAdjacentHTML("beforeend",logMsg(l));f.scrollTop=f.scrollHeight}
+  else{logUnread=Math.min(99,logUnread+1);var b=document.querySelector('.ch[data-c="boost-log"]');if(b){var nb=b.querySelector(".new");if(!nb){b.insertAdjacentHTML("beforeend",'<span class="new"></span>');nb=b.querySelector(".new")}nb.textContent=logUnread}}
+}
+setInterval(function(){var s=SERVERS[Math.floor(Math.random()*5)];logBoost({s:s.n,k:Math.max(1,Math.min(14,s.b)),off:0})},9000);
+
+/* ---------- members (boosters follow the simulation) ---------- */
+var memN=-1;
+function renderMem(n){
+  if(n===memN)return;var grew=n>memN&&memN>=0;memN=n;
+  var h='<div class="mh">App — 1</div><div class="mm"><div class="av"><svg><use href="#mk"/></svg></div><span class="nm" style="color:var(--hd)">BoostPad</span><span class="app" style="margin-left:4px">APP</span></div>';
+  h+='<div class="mh">Boosters — '+n+'</div>';
+  if(!n)h+='<div class="mm off" style="opacity:.55"><span class="nm" style="font-size:13px">No boosts yet. The coin pays for them.</span></div>';
+  var show=Math.min(n,6);
+  for(var i=1;i<=show;i++)h+='<div class="mm"'+(grew&&i===show&&n<=6?' style="animation:pop .45s cubic-bezier(.2,1.6,.4,1)"':'')+'><div class="av" style="background:#5865f2"><svg style="width:18px;height:18px;color:#fff"><use href="#bst"/></svg></div><span class="nm" style="color:#f47fff">booster-'+String(i).padStart(2,"0")+'</span><span class="bs"><svg><use href="#bst"/></svg></span></div>';
+  if(n>6)h+='<div class="mm" style="opacity:.75"><div class="av" style="background:#4e5058">+'+(n-6)+'</div><span class="nm">'+(n===7?'booster-07':'booster-07 … '+String(n).padStart(2,"0"))+'</span></div>';
+  h+='<div class="mh">Online — 5</div>';
+  [["kettlecrash","#e67700"],["mintgoblin","#2f9e44"],["soup_enjoyer","#1098ad"],["pixelmom","#c2255c"],["nightshiftnate","#7048e8"]].forEach(function(u){h+='<div class="mm"><div class="av" style="background:'+u[1]+'">'+u[0][0].toUpperCase()+'</div><span class="nm">'+u[0]+'</span></div>'});
+  h+='<div class="mh">Offline — 2</div><div class="mm off"><div class="av" style="background:#4e5058">D</div><span class="nm">dev_is_asleep</span></div><div class="mm off"><div class="av" style="background:#4e5058">P</div><span class="nm">paperhands</span></div>';
+  $("#mem").innerHTML=h;
+}
+renderMem(0);
+
+/* ---------- composer / commands ---------- */
+var CMDS=[["/launch","Launch a coin for a server's invite"],["/levels","What each level costs"],["/board","Servers with a coin"],["/token","$BOOST"],["/help","How BoostPad works"]];
+var inp=$("#cmpIn"),sl=$("#slash"),slSel=0;
+function slashRender(){
+  var v=inp.value;if(v[0]!=="/"||v.indexOf(" ")>-1){sl.classList.remove("on");return}
+  var m=CMDS.filter(function(c){return c[0].indexOf(v.toLowerCase())===0});
+  if(!m.length){sl.classList.remove("on");return}
+  slSel=Math.min(slSel,m.length-1);
+  sl.innerHTML=m.map(function(c,i){return '<button type="button" data-c="'+c[0]+'"'+(i===slSel?' class="sel"':'')+'><code>'+c[0]+'</code><span>'+c[1]+'</span></button>'}).join("");
+  sl.classList.add("on");
+}
+inp.addEventListener("input",function(){slSel=0;slashRender()});
+inp.addEventListener("keydown",function(e){
+  if(!sl.classList.contains("on"))return;
+  var n=sl.querySelectorAll("button").length;
+  if(e.key==="ArrowDown"){e.preventDefault();slSel=(slSel+1)%n;slashRender()}
+  else if(e.key==="ArrowUp"){e.preventDefault();slSel=(slSel-1+n)%n;slashRender()}
+  else if(e.key==="Tab"){e.preventDefault();var b=sl.querySelectorAll("button")[slSel];inp.value=b.dataset.c+" ";sl.classList.remove("on")}
+});
+sl.addEventListener("click",function(e){var b=e.target.closest("button");if(!b)return;inp.value=b.dataset.c+" ";sl.classList.remove("on");inp.focus()});
+$("#cmp").addEventListener("submit",function(e){e.preventDefault();var v=inp.value.trim();if(!v)return;inp.value="";sl.classList.remove("on");run(v)});
+
+function run(v){
+  var low=v.toLowerCase();
+  if(low.indexOf("/launch")===0){
+    var code=parseInvite(v.slice(7));
+    if(cur!=="launch")go("launch");
+    var out=$("#launchOut");
+    out.insertAdjacentHTML("beforeend",user("you","#949ba4",'<code>'+esc(v)+'</code>',0));
+    if(!code){out.insertAdjacentHTML("beforeend",bot('<p>Give me an invite after the command, like <code>/launch discord.gg/yourserver</code>.</p>',0));scrollEnd();return}
+    var id="lk"+Date.now();
+    out.insertAdjacentHTML("beforeend",bot('<p id="'+id+'" style="color:var(--mut)">Looking up <code>discord.gg/'+esc(code)+'</code> on Discord…</p>',0));
+    scrollEnd();
+    lookup(code).then(function(r){var p=document.getElementById(id);if(!p)return;p.closest(".b").insertAdjacentHTML("beforeend",resultHTML(code,r));p.remove();bindForm();scrollEnd()});
+    return;
+  }
+  if(low.indexOf("/levels")===0)return go("levels");
+  if(low.indexOf("/board")===0)return go("board");
+  if(low.indexOf("/token")===0)return go("boost-token");
+  if(low.indexOf("/help")===0)return go("how-it-works");
+  var f=$("#feed");
+  f.insertAdjacentHTML("beforeend",user("you","#949ba4",esc(v),0)+bot('<p>I only take commands here. Try <code>/launch discord.gg/yourserver</code>.</p>',0));
+  scrollEnd();
+}
+function scrollEnd(){var f=$("#feed");f.scrollTop=f.scrollHeight}
+function parseInvite(s){
+  s=String(s||"").trim().replace(/^<|>$/g,"");
+  var m=s.match(/(?:discord(?:app)?\.(?:gg|com\/invite|io|me)\/)([A-Za-z0-9-]{2,40})/i);
+  if(m)return m[1];
+  m=s.match(/^([A-Za-z0-9-]{2,40})$/);return m?m[1]:"";
+}
+function fetchT(url,ms){return new Promise(function(res,rej){var t=setTimeout(function(){rej(new Error("timeout"))},ms);fetch(url).then(function(r){clearTimeout(t);res(r)},function(e){clearTimeout(t);rej(e)})})}
+function lookup(code){
+  var viaApi=function(){return fetchT("api/invite?code="+encodeURIComponent(code),5000).then(function(r){if(r.status===404)return {missing:true};if(!r.ok)throw 0;return r.json().then(function(j){if(!j||!j.name)throw 0;j.live=true;return j})})};
+  var direct=function(){return fetchT("https://discord.com/api/v10/invites/"+encodeURIComponent(code)+"?with_counts=true",5000).then(function(r){if(r.status===404)return {missing:true};if(!r.ok)throw 0;return r.json().then(function(j){var g=j.guild||{};return {live:true,id:g.id,name:g.name,icon:g.icon,boosts:g.premium_subscription_count,members:j.approximate_member_count,online:j.approximate_presence_count,vanity:g.vanity_url_code}})})};
+  var isHttp=/^https?:/.test(location.protocol)&&!/claude|anthropic|usercontent/.test(location.hostname);
+  var p=isHttp?viaApi().catch(direct):direct();
+  return p.catch(function(){return {sample:true}});
+}
+function tickerFrom(name){var w=String(name||"").replace(/[^A-Za-z0-9 ]/g," ").trim().split(/\s+/).filter(Boolean);var t=w.length>1?w.map(function(x){return x[0]}).join(""):(w[0]||"SERVER");return t.toUpperCase().slice(0,8)}
+function resultHTML(code,r){
+  if(r.missing)return '<p>That invite doesn\'t exist or has expired: <code>discord.gg/'+esc(code)+'</code>. Grab a fresh one from the server.</p>';
+  var sample=!!r.sample;
+  var name=sample?code.charAt(0).toUpperCase()+code.slice(1):r.name;
+  var boosts=sample?0:(r.boosts||0);
+  var l=levelOf(boosts),need=Math.max(0,14-boosts);
+  var vol=need*PRICE/SERVER_CUT/FEE;
+  var icon=(!sample&&r.icon&&r.id)?'<img src="https://cdn.discordapp.com/icons/'+esc(r.id)+'/'+esc(r.icon)+'.'+(String(r.icon).indexOf("a_")===0?"gif":"png")+'?size=128" alt="">':'<div class="ph">'+esc(tickerFrom(name).slice(0,2))+'</div>';
+  var tk=tickerFrom(name);
+  return '<div class="em pk">'+(sample?'<div style="margin-bottom:10px"><span class="demo">SAMPLE</span> <span style="font-size:13px;color:var(--mut)">Couldn\'t reach Discord from this preview. The live site reads the real server.</span></div>':'<div style="margin-bottom:10px"><span class="demo" style="background:rgba(35,165,90,.15);color:var(--green)">LIVE FROM DISCORD</span></div>')+
+  '<div class="srv">'+icon+'<div><b>'+esc(name)+'</b><span>discord.gg/'+esc(code)+'</span></div></div>'+
+  '<div class="fl"><div class="f"><div class="k">Members</div><div class="v">'+(sample?"—":Number(r.members||0).toLocaleString())+'</div></div><div class="f"><div class="k">Online now</div><div class="v">'+(sample?"—":Number(r.online||0).toLocaleString())+'</div></div><div class="f"><div class="k">Boosts today</div><div class="v">'+(sample?"—":boosts+" · Level "+l)+'</div></div></div>'+
+  '<div class="sub" style="margin-top:12px">'+(need?(sample?'BoostPad adds up to <b>14 boosts</b>, minus whatever the server already has.':'BoostPad adds up to <b>'+need+' boosts</b>.')+' Level 3 costs <b>'+money(need*PRICE)+'/month</b>, about <b>$'+kfmt(vol)+' of volume a month</b>.':'Already Level 3. Every fee goes to banking next month, then burning the server\'s coin.')+'</div>'+
+  '<div class="frm"><div><label>Coin name</label><input value="'+esc(name)+'" maxlength="32"></div><div><label>Ticker</label><input value="'+esc(tk)+'" maxlength="10"></div></div>'+
+  '<div class="btns"><button class="btn pk lch" type="button"><svg><use href="#bst"/></svg>Launch $'+esc(tk)+'</button></div>'+
+  '<div class="ft">Fees go to this server\'s vault, set in the launch transaction. One coin per server.</div></div>';
+}
+function bindForm(){document.querySelectorAll(".lch:not([data-b])").forEach(function(b){b.dataset.b=1;b.addEventListener("click",function(){toast("Launches open with $BOOST. This button is a DEMONSTRATION until then.")})})}
+
+/* ---------- mobile drawer ---------- */
+$("#burger").addEventListener("click",function(){document.body.classList.toggle("dr")});
+$("#scrim").addEventListener("click",function(){document.body.classList.remove("dr")});
+
+/* ---------- sound ---------- */
+var ac=null,soundOn=false;
+function audioInit(){if(soundOn&&!ac){try{ac=new (window.AudioContext||window.webkitAudioContext)()}catch(e){}}}
+$("#sndBtn").addEventListener("click",function(){soundOn=!soundOn;$("#sndBtn use").setAttribute("href",soundOn?"#spk":"#mute");audioInit();if(soundOn)chime(1)});
+function chime(l){
+  if(!soundOn||!ac)return;
+  var notes=[[523.25,659.25],[523.25,659.25,783.99],[523.25,659.25,783.99,1046.5],[523.25,659.25,783.99,1046.5,1318.5]][Math.min(3,l)];
+  notes.forEach(function(f,i){var o=ac.createOscillator(),g=ac.createGain();o.type="triangle";o.frequency.value=f;var t=ac.currentTime+i*.08;g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(.12,t+.02);g.gain.exponentialRampToValueAtTime(.001,t+.5);o.connect(g).connect(ac.destination);o.start(t);o.stop(t+.55)});
+}
+document.addEventListener("visibilitychange",function(){if(ac){document.hidden?ac.suspend():ac.resume()}});
+
+/* ---------- confetti ---------- */
+var fx=$("#fx"),fc=fx.getContext("2d"),parts=[],fxOn=false;
+function confetti(){
+  var w=fx.width=innerWidth,h=fx.height=innerHeight;
+  var cols=["#5865f2","#ff73fa","#ffffff","#9b84ff","#f0b232"];
+  for(var i=0;i<170;i++)parts.push({x:w/2+(Math.random()-.5)*120,y:h*.42,vx:(Math.random()-.5)*15,vy:-Math.random()*15-4,r:Math.random()*6+4,c:cols[i%cols.length],a:Math.random()*6,va:(Math.random()-.5)*.4,life:1});
+  if(!fxOn){fxOn=true;requestAnimationFrame(fxLoop)}
+}
+function fxLoop(){
+  fc.clearRect(0,0,fx.width,fx.height);
+  parts=parts.filter(function(p){return p.life>0&&p.y<fx.height+40});
+  parts.forEach(function(p){p.vy+=.42;p.vx*=.985;p.x+=p.vx;p.y+=p.vy;p.a+=p.va;p.life-=.006;fc.save();fc.translate(p.x,p.y);fc.rotate(p.a);fc.globalAlpha=Math.max(0,Math.min(1,p.life*1.4));fc.fillStyle=p.c;fc.fillRect(-p.r/2,-p.r/4,p.r,p.r/2);fc.restore()});
+  if(parts.length)requestAnimationFrame(fxLoop);else{fxOn=false;fc.clearRect(0,0,fx.width,fx.height)}
+}
+
+/* ---------- start ---------- */
+go("welcome");
+})();
+</script>
+</body>
+</html>
